@@ -1,47 +1,18 @@
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-import { AppModule } from '../src/app.module';
 
 const server = express();
-
-async function createNestServer(expressInstance: ReturnType<typeof express>) {
-  const app = await NestFactory.create(
-    AppModule,
-    new ExpressAdapter(expressInstance),
-  );
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
-
-  const config = new DocumentBuilder()
-    .setTitle('Movies API')
-    .setDescription('REST API for movie management with Star Wars sync')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
-
-  await app.init();
-  return app;
-}
-
-let nestApp: Awaited<ReturnType<typeof createNestServer>> | undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let nestApp: any;
 
 export default async function handler(
   req: express.Request,
   res: express.Response,
 ) {
   if (!nestApp) {
-    nestApp = await createNestServer(server);
+    // Dynamic require so @vercel/node does not statically analyse @nestjs/* imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { bootstrap } = require('../dist/src/bootstrap');
+    nestApp = await bootstrap(server);
   }
   server(req, res);
 }
